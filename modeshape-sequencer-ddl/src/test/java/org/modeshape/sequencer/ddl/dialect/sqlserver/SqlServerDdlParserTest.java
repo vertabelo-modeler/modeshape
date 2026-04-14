@@ -652,10 +652,57 @@ public class SqlServerDdlParserTest extends DdlParserTestHelper {
         assertEquals("@name", parameter1Node.getProperty(SqlServerDdlLexicon.PARAMETER));
         assertEquals("N'MS_Description'", parameter1Node.getProperty(SqlServerDdlLexicon.VALUE));
     }
-    
+
+    @Test
+    public void shouldParseExecuteProcedureWithNPrefixedStringContainingSpaces() {
+        // N' strings whose content contains spaces were handled differently by the old tokenizer
+        // (split across two WORD tokens at the space). The new tokenizer captures them as a single
+        // SINGLE_QUOTED_STRING, and the parser reassembles N + 'value' without a space.
+        String content = "EXEC sp_addextendedproperty "
+                + "@name = N'MS_Description', "
+                + "@value = N'A description with spaces', "
+                + "@level0type = N'SCHEMA', "
+                + "@level0name = N'dbo'";
+
+        assertScoreAndParse(content, null, 1);
+        AstNode childNode = rootNode.getChildren().get(0);
+
+        assertTrue(hasMixinType(childNode, SqlServerDdlLexicon.TYPE_EXECUTE_STATEMENT));
+        assertEquals(4, childNode.getChildren().size());
+
+        AstNode valueNode = childNode.getChildren().get(1);
+        assertTrue(hasMixinType(valueNode, SqlServerDdlLexicon.TYPE_EXECUTE_PARAMETER));
+        assertEquals("@value", valueNode.getProperty(SqlServerDdlLexicon.PARAMETER));
+        assertEquals("N'A description with spaces'", valueNode.getProperty(SqlServerDdlLexicon.VALUE));
+    }
+
+    @Test
+    public void shouldParseExecuteProcedureWithNPrefixedStringContainingBrackets() {
+        // Regression test for the N' tokenisation bug. N'[schema].[table]' patterns caused a
+        // parse failure: the tokeniser stopped the WORD at '[' (a stop-set character), producing
+        // WORD N' and leaving the closing ' orphaned. Each orphaned ' was rescued by the opening '
+        // of the next N' occurrence; only the last had nothing to rescue it and threw.
+        String content = "EXEC sp_addextendedproperty "
+                + "@name = N'MS_Description', "
+                + "@value = N'[schema].[table]', "
+                + "@level0type = N'SCHEMA', "
+                + "@level0name = N'dbo'";
+
+        assertScoreAndParse(content, null, 1);
+        AstNode childNode = rootNode.getChildren().get(0);
+
+        assertTrue(hasMixinType(childNode, SqlServerDdlLexicon.TYPE_EXECUTE_STATEMENT));
+        assertEquals(4, childNode.getChildren().size());
+
+        AstNode valueNode = childNode.getChildren().get(1);
+        assertTrue(hasMixinType(valueNode, SqlServerDdlLexicon.TYPE_EXECUTE_PARAMETER));
+        assertEquals("@value", valueNode.getProperty(SqlServerDdlLexicon.PARAMETER));
+        assertEquals("N'[schema].[table]'", valueNode.getProperty(SqlServerDdlLexicon.VALUE));
+    }
+
     @Test
     public void shouldParseExecute() {
-        String content = "EXEC (@variable) AS login = 'user'; "; 
+        String content = "EXEC (@variable) AS login = 'user'; ";
         
         assertScoreAndParse(content, null, 1);
         AstNode childNode = rootNode.getChildren().get(0);

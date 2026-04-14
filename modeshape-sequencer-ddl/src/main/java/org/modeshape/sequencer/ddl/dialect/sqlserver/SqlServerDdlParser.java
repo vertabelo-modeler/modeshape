@@ -730,9 +730,16 @@ public class SqlServerDdlParser extends StandardDdlParser
     protected String parseUntilCommaOrTerminatorOrWith( DdlTokenStream tokens ) throws ParsingException {
         StringBuffer sb = new StringBuffer();
         // parse until next statement
-        while (tokens.hasNext() && !tokens.matches(DdlTokenizer.STATEMENT_KEY) 
+        while (tokens.hasNext() && !tokens.matches(DdlTokenizer.STATEMENT_KEY)
                 && !tokens.matches(COMMA) && !tokens.matches("WITH") && !isTerminator(tokens)) {
-            sb.append(SPACE).append(tokens.consume());
+            String token = tokens.consume();
+            if ("N".equals(token) && tokens.hasNext() && tokens.matches(DdlTokenizer.SINGLE_QUOTED_STRING)) {
+                // N'...' is a SQL Server nvarchar string literal. Reconstruct without a space so that
+                // downstream code sees N'value' rather than N 'value'.
+                sb.append(SPACE).append(token).append(tokens.consume());
+            } else {
+                sb.append(SPACE).append(token);
+            }
         }
 
         return sb.toString();
