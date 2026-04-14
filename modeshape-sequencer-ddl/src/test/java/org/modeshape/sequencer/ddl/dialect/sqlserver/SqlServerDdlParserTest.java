@@ -748,6 +748,39 @@ public class SqlServerDdlParserTest extends DdlParserTestHelper {
 
 
     @Test
+    public void shouldParseIdentityWithNegativeSeed() {
+        // Regression test: IDENTITY(-1,1) caused a ParsingException because '-' is tokenised as a
+        // bare SYMBOL, so parseContentBetweenParens reconstructed "- 1 , 1". The inner token stream
+        // then failed at consume(",") because it found '1' instead.
+        String content = "CREATE TABLE t (ID int IDENTITY(-1,1));";
+
+        assertScoreAndParse(content, null, 1);
+        AstNode childNode = rootNode.getChildren().get(0);
+        assertTrue(hasMixinType(childNode, StandardDdlLexicon.TYPE_CREATE_TABLE_STATEMENT));
+
+        AstNode columnNode = childNode.getChildren().get(0);
+        assertTrue(hasMixinType(columnNode, StandardDdlLexicon.TYPE_COLUMN_DEFINITION));
+        assertNotNull(columnNode.getProperty(SqlServerDdlLexicon.COLUMN_IDENTITY));
+        assertEquals("-1", columnNode.getProperty(SqlServerDdlLexicon.COLUMN_IDENTITY_SEED));
+        assertEquals("1", columnNode.getProperty(SqlServerDdlLexicon.COLUMN_IDENTITY_INCREMENT));
+    }
+
+    @Test
+    public void shouldParseIdentityWithNegativeIncrement() {
+        String content = "CREATE TABLE t (ID int IDENTITY(1,-1));";
+
+        assertScoreAndParse(content, null, 1);
+        AstNode childNode = rootNode.getChildren().get(0);
+        assertTrue(hasMixinType(childNode, StandardDdlLexicon.TYPE_CREATE_TABLE_STATEMENT));
+
+        AstNode columnNode = childNode.getChildren().get(0);
+        assertTrue(hasMixinType(columnNode, StandardDdlLexicon.TYPE_COLUMN_DEFINITION));
+        assertNotNull(columnNode.getProperty(SqlServerDdlLexicon.COLUMN_IDENTITY));
+        assertEquals("1", columnNode.getProperty(SqlServerDdlLexicon.COLUMN_IDENTITY_SEED));
+        assertEquals("-1", columnNode.getProperty(SqlServerDdlLexicon.COLUMN_IDENTITY_INCREMENT));
+    }
+
+    @Test
     public void shouldParseWithDot() {
         String content = "CREATE TABLE [dbo].[Blade]("
         + "[Id] [uniqueidentifier] NOT NULL CONSTRAINT [DF_dbo.Blade_Id]  DEFAULT (newsequentialid()),"
