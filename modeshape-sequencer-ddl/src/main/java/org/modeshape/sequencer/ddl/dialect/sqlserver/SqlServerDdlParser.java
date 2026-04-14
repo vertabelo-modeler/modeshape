@@ -1349,12 +1349,12 @@ public class SqlServerDdlParser extends StandardDdlParser
                 DdlTokenStream identityTokens = new DdlTokenStream(identityStatement, DdlTokenStream.ddlTokenizer(true), false);
                 identityTokens.start();
                 
-                String seed = identityTokens.consume();
+                String seed = (identityTokens.canConsume("-") ? "-" : "") + identityTokens.consumeInteger();
                 columnNode.setProperty(SqlServerDdlLexicon.COLUMN_IDENTITY_SEED, seed);
-                
+
                 identityTokens.consume(",");
-                
-                String increment = identityTokens.consume();
+
+                String increment = (identityTokens.canConsume("-") ? "-" : "") + identityTokens.consumeInteger();
                 columnNode.setProperty(SqlServerDdlLexicon.COLUMN_IDENTITY_INCREMENT, increment);
             }
             
