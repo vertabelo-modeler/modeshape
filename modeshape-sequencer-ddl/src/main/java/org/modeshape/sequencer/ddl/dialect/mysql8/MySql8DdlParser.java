@@ -2142,7 +2142,6 @@ public class MySql8DdlParser extends StandardDdlParser
         @Override
         public void setPropertiesOnNode(AstNode columnNode, DataType datatype) {
             assert columnNode != null;
-            assert datatype != null;
             super.setPropertiesOnNode(columnNode, datatype);
 
             if (datatype instanceof MySql8DataType) {
