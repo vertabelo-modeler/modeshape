@@ -954,6 +954,10 @@ public class DataTypeParser implements DdlConstants {
 
     public void setPropertiesOnNode( AstNode columnNode,
                                      DataType datatype ) {
+        if (datatype == null) {
+            throw new ParsingException(Position.EMPTY_CONTENT_POSITION,
+                    DdlSequencerI18n.errorParsingDataTypeParameter.text(columnNode.getName()));
+        }
         columnNode.setProperty(DATATYPE_NAME, datatype.getName());
         if (datatype.getLength() >= 0) {
             columnNode.setProperty(DATATYPE_LENGTH, datatype.getLength());

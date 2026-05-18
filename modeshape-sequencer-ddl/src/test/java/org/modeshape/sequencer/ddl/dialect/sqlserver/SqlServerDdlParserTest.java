@@ -32,6 +32,7 @@ import static org.modeshape.sequencer.ddl.dialect.sqlserver.SqlServerDdlLexicon.
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.modeshape.common.text.ParsingException;
 import org.modeshape.sequencer.ddl.DdlConstants;
 import org.modeshape.sequencer.ddl.DdlParserScorer;
 import org.modeshape.sequencer.ddl.DdlParserTestHelper;
@@ -929,6 +930,20 @@ public class SqlServerDdlParserTest extends DdlParserTestHelper {
         Scanner s = new Scanner(inputStream).useDelimiter("\\A");
         String sql = s.hasNext() ? s.next() : "";
         assertScoreAndParse(sql, null, 1);
+    }
+
+    @Test(expected = ParsingException.class)
+    public void shouldThrowParsingExceptionWhenColumnUsesUnrecognisedDataType() {
+        printTest("shouldThrowParsingExceptionWhenColumnUsesUnrecognisedDataType()");
+        // DOUBLE is a MySQL type, not recognised by the SQL Server dialect.
+        // Before the fix this NPE'd inside DataTypeParser.setPropertiesOnNode;
+        // now it throws a ParsingException.
+        String content = "CREATE TABLE Migration (" + SPACE
+                         + "Id INT NOT NULL," + SPACE
+                         + "Price DOUBLE NOT NULL," + SPACE
+                         + "Name VARCHAR(100) NULL," + SPACE
+                         + "CONSTRAINT PK_Migration PRIMARY KEY (Id)" + SPACE + ");";
+        parser.parse(content, rootNode, scorer);
     }
 
 
